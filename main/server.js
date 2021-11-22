@@ -252,20 +252,178 @@ app.post('/removeStaff', (req, res) => {
     }
 });
 
-
-/*
-::TODO::
-*/
 app.post('/updateStaff', (req, res) => {
 
-    let updateBy = req.body.updateBy; // ID or Name
+    /*
+        ~Responses~
+        [*]  0 = Successful and verified enter
+        [*]  1 = Error Occured, contact admin
+        [*]  2 = Passwords do not match, try again
+        [*]  3 = Register passed but not verified
+        [*]  4 = ID does not exist or is customer
+        */
 
-    let staffName = req.body.staffName;
-    let staffID = req.body.staffID;
-    let staffPassword = req.body.password;
+    let staffPosition = {val: req.body.job, title: 'position'};
+    let staffName = {val: req.body.sName, title: 'name'};
+    let staffID = {val: req.body.staffID, title: 'id'};
+    let staffAddress = {val: req.body.address, title: 'address'};
+    let staffPhone = {val: req.body.phone, title: 'phone'};
+    let staffPassword = {val: req.body.password, title: 'password'}
+    let staffPasswordV = req.body.passwordV;
 
+    let sqlQuery =  `UPDATE CBOdb SET ` ;
+    let idExists = true;
 
-})
+    if (staffPassword.val != "") {
+        if (staffPassword.val != staffPasswordV) {
+            res.send(JSON.stringify({code:2}));
+            return;
+        }
+    }
+
+    let valList = [staffPosition, staffName, staffPassword, staffAddress, staffPhone];
+    let toUpdate = [];
+
+    valList.forEach(element => {
+        console.log(element);
+        console.log(toUpdate);
+        if (element.val != "") {
+            toUpdate.push(element);
+        }
+    })
+    toUpdate.forEach(element => {
+        if (toUpdate.indexOf(element) == toUpdate.length-1){
+            sqlQuery += `${element.title} = '${element.val}' WHERE id = '${staffID.val}'`;
+        } else {
+            sqlQuery += `${element.title} = '${element.val}', `
+        }
+    })
+    if (toUpdate.length == 0) {
+        res.send(JSON.stringify({code:5})) // Must enter values to update
+        return
+    }
+    let idQuery = `SELECT * FROM CBOdb WHERE id = '${staffID.val}'`;
+
+    let idCheck = new Promise((resolve, reject) => {
+        con.query(idQuery, function(err, result) {
+            if (err) {
+                reject(err);
+            } else {
+                console.log(result);
+                resolve(result);
+            }
+        })
+    })
+    idCheck.then((result) => {
+        Object.keys(result).forEach(function(key) {
+            // If query for ID is successfull, compare passwords
+            if (staffID.val != result[key].id) {
+                res.send(JSON.stringify({code:4}));
+                idExists = false;
+            } else if (result[key].staff == 0) {
+                res.send(JSON.stringify({code:4}));
+                idExists = false;
+            }
+        })
+        if (idExists == true) {  
+            let query = new Promise((resolve, reject) => {
+                con.query(sqlQuery, function(err, result) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(result);
+                    }
+                });
+            });
+
+            query.then((result) => {
+                res.send(JSON.stringify({code:0})); // Successfull update
+            });
+
+            query.catch((err) => {
+                res.send(JSON.stringify({code:1})) //"**Error ecounterd, staff not registerd**\nPlease contact system Administrator.")
+            })
+        }
+    }) 
+    idCheck.catch((err) => {
+        console.log(err);
+        res.send(JSON.stringify({code:1}))
+    })
+});
+
+app.post('/getStaffData', (req, res) => {
+
+    /*
+        ~Responses~
+        [*]  result = Data retrieved and sent
+        [*]  1 = Error Occured, contact admin
+        [*]  2 = ID does not exist or does not belong to Patient
+    */
+
+        let staffID = req.body.staffID;
+        let idExists = true;
+    
+        let responseText;
+           
+        
+        let sqlQuery = `SELECT name, id, position, address, phone FROM CBOdb WHERE id = '${staffID}'`;
+    
+        let idQuery = `SELECT * FROM CBOdb WHERE id = '${staffID}'`;
+        
+        let idCheck = new Promise((resolve, reject) => {
+            con.query(idQuery, function(err, result) {
+                if (err) {
+                    reject(err);
+                } else {
+                    console.log(result);
+                    resolve(result);
+                }
+            })
+        })
+        idCheck.then((result) => {
+            if (result.length == 0) {
+                idExists = false;
+                res.send(JSON.stringify({code:2}))
+                return
+            }
+            Object.keys(result).forEach(function(key) {
+                if (result[key].staff == 0) {
+                    idExists = false;
+                    res.send(JSON.stringify({code:2}));
+                    return
+                }
+            })
+            if (idExists == true) {
+                let query = new Promise((resolve, reject) => {
+                    con.query(sqlQuery, function(err, result) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(result);
+                        }
+                    });
+                });
+                query.then((result) => {
+                    console.log(result[0]);
+                    Object.keys(result[0]).forEach(function(key) {
+                            if ((result[0])[key] == null) {
+                                responseText += `|Empty`;
+                            } else {
+                            responseText += `|${(result[0])[key]}`;
+                            }
+                    })
+                    res.send(JSON.stringify({val: responseText}));
+                })
+                query.catch((error) => {
+                    res.send(JSON.stringify({code:1}));
+                });
+            }
+        });
+        idCheck.catch((error) => {
+            res.send(JSON.stringify({code:1}));
+        });
+
+});
 
 /*
 +----------------+
@@ -453,6 +611,109 @@ app.post('/removeCustomer', (req, res) => {
     }
 });
 
+app.post('/updateCustomer', (req, res) => {
+
+    /*
+        ~Responses~
+        [*]  0 = Successful and verified enter
+        [*]  1 = Error Occured, contact admin
+        [*]  2 = Passwords do not match, try again
+        [*]  3 = Register passed but not verified
+        [*]  4 = ID does not exist or is staff
+        [*]  5 = Values to update is empty
+    */
+
+    // Getting data from request
+    let customerName = {val: req.body.cName, title: 'name'};
+    let customerID = {val: req.body.cID, title: 'id'};
+    let customerPassword = {val: req.body.password, title: 'password'};
+    let customerPasswordV = req.body.passwordV;
+
+    let customerAddress = {val: req.body.address, title: 'address'};
+    let customerPhone = {val: req.body.phone, title: 'phone'};
+
+
+
+    let sqlQuery =  `UPDATE CBOdb SET ` ;
+    let idExists = true;
+
+    if (customerPassword.val != "") {
+        if (customerPassword.val != customerPasswordV) {
+            res.send(JSON.stringify({code:2}));
+            return;
+        }
+    }
+
+    let valList = [customerName, customerPassword, customerAddress, customerPhone];
+    let toUpdate = [];
+
+    valList.forEach(element => {
+        console.log(element);
+        console.log(toUpdate);
+        if (element.val != "") {
+            toUpdate.push(element);
+        }
+    })
+    toUpdate.forEach(element => {
+        if (toUpdate.indexOf(element) == toUpdate.length-1){
+            sqlQuery += `${element.title} = '${element.val}' WHERE id = '${customerID.val}'`;
+        } else {
+            sqlQuery += `${element.title} = '${element.val}', `
+        }
+    })
+    if (toUpdate.length == 0) {
+        res.send(JSON.stringify({code:5})) // Must enter values to update
+        return
+    }
+    let idQuery = `SELECT * FROM CBOdb WHERE id = '${customerID.val}'`;
+
+    let idCheck = new Promise((resolve, reject) => {
+        con.query(idQuery, function(err, result) {
+            if (err) {
+                reject(err);
+            } else {
+                console.log(result);
+                resolve(result);
+            }
+        })
+    })
+    idCheck.then((result) => {
+        Object.keys(result).forEach(function(key) {
+            // If query for ID is successfull, compare passwords
+            if (customerID.val != result[key].id) {
+                res.send(JSON.stringify({code:4}));
+                idExists = false;
+            } else if (result[key].staff == 0) {
+                res.send(JSON.stringify({code:4}));
+                idExists = false;
+            }
+        })
+        if (idExists == true) {  
+            let query = new Promise((resolve, reject) => {
+                con.query(sqlQuery, function(err, result) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(result);
+                    }
+                });
+            });
+
+            query.then((result) => {
+                res.send(JSON.stringify({code:0})); // Successfull update
+            });
+
+            query.catch((err) => {
+                res.send(JSON.stringify({code:1})) //"**Error ecounterd, staff not registerd**\nPlease contact system Administrator.")
+            })
+        }
+    }) 
+    idCheck.catch((err) => {
+        console.log(err);
+        res.send(JSON.stringify({code:1}))
+    })
+});
+ 
 app.post('/getAllCustomers', (req, res) => {
 
     let sqlQuery = `SELECT name, id FROM CBOdb WHERE staff IS FALSE`;
@@ -475,7 +736,7 @@ app.post('/getAllCustomers', (req, res) => {
             responseText += `\n${row.name}|${row.id}`;
         })
 
-        res.send(responseText);
+        res.send(JSON.stringify({val: responseText}));
     })
     query.catch((error) => {
         res.send(JSON.stringify({code:1}));
@@ -483,40 +744,81 @@ app.post('/getAllCustomers', (req, res) => {
 
 })
 
-app.post('/customerData', (req, res) => {
+app.post('/getCustomerData', (req, res) => {
 
-    let sqlQuery;
-    let customerToGet;
-    /*
-    ~Types~
-        0 = By Name
-        1 = By ID
+     /*
+        ~Responses~
+        [*]  result = Data retrieved and sent
+        [*]  1 = Error Occured, contact admin
+        [*]  2 = ID does not exist or does not belong to Patient
     */
-    if (req.body.searchType == 0) {
-        customerToGet = req.body.customerID;
-        sqlQuery = `SELECT * FROM CBOdb WHERE name = '${customerToGet}'`        
-    } else {
-        customerToGet = req.body.customerName;
-        sqlQuery = `SELECT * FROM CBOdb WHERE id = '${customerToGet}'`
-    }
 
-    let query = new Promise((resolve, reject) => {
-        con.query(sqlQuery, function(err, result) {
+    let customerID = req.body.cID;
+    let idExists = true;
+
+    let responseText;
+       
+    
+    let sqlQuery = `SELECT name, id, address, phone FROM CBOdb WHERE id = '${customerID}'`;
+
+    let idQuery = `SELECT * FROM CBOdb WHERE id = '${customerID}'`;
+    
+    let idCheck = new Promise((resolve, reject) => {
+        con.query(idQuery, function(err, result) {
             if (err) {
                 reject(err);
             } else {
+                console.log(result);
                 resolve(result);
             }
-        });
+        })
+    })
+    idCheck.then((result) => {
+        if (result.length == 0) {
+            idExists = false;
+            res.send(JSON.stringify({code:2}))
+            return
+        }
+        Object.keys(result).forEach(function(key) {
+            if (result[key].staff == 1) {
+                idExists = false;
+                res.send(JSON.stringify({code:2}));
+                return
+            }
+        })
+        if (idExists == true) {
+            let query = new Promise((resolve, reject) => {
+                con.query(sqlQuery, function(err, result) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(result);
+                    }
+                });
+            });
+            query.then((result) => {
+                console.log(result[0]);
+                Object.keys(result[0]).forEach(function(key) {
+                        if ((result[0])[key] == null) {
+                            responseText += `|Empty`;
+                        } else {
+                        responseText += `|${(result[0])[key]}`;
+                        }
+                })
+                res.send(JSON.stringify({val: responseText}));
+            })
+            query.catch((error) => {
+                res.send(JSON.stringify({code:1}));
+            });
+        }
     });
-    query.then((result) => {
-        res.send(result);
-    });
-    query.catch((error) => {
+    idCheck.catch((error) => {
         res.send(JSON.stringify({code:1}));
     });
-});
+});              
 
-console.log("\n\n\nServer Running\n\n\n");
+console.log("\n**********************");
+console.log("*                    *\n*   Server Running   *\n*                    *");
+console.log("**********************\n");
 
 app.listen(PORT, HOST);

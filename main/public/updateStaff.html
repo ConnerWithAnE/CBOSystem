@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Info Update</title>
+</head>
+<body>
+    <div class="staff-sign" style="width: 100%; text-align: center;">
+        <h3>Update Existing Staff</h3>
+        <div style="margin-left: auto; margin-right:0;">
+            <label for="ID">Enter ID of staff member to update</label>
+            <input id="staffIDInput" type="text" value="">
+            <br>
+            <br>
+            <h4>Enter info to be changed, leave blank if it is to remain the same.</h4>
+            <label for="name">Full Name</label>
+            <input id="staffNameInput" type="text" value="">
+            <br>
+            <label for="position">Position</label>
+            <input id="staffPosInput" type="text" value="">
+            <br>
+            <label for="address">Address (If Applicable)</label>
+            <input id="staffAddressInput" type="text" value="">
+            <br>
+            <label for="phone">Phone Number (If Applicable)</label>
+            <input id="staffPhoneInput" type="text" value="">
+            <br>
+            <label for="password">Password</label>
+            <input id="staffPassword" type="password" value="">
+            <br>
+            <label for="passwordVerification">Re-type Password</label>
+            <input id="staffPasswordV" type="password" value="">
+            <br>
+            <button id="updateStaffBtn" onclick="updateStaffMember()" style="margin-top: 15px;" class="dirBtn">Update</button>
+            
+        </div>
+    </div>
+        
+    <script src="main.js"></script>
+</body>
+</html>
