@@ -30,6 +30,10 @@ app.get('/createDatabase', (req, res) => {
     con.query("CREATE TABLE IF NOT EXISTS CBOdb(staff BOOLEAN, name VARCHAR(60), time DATETIME, password VARCHAR(40), position VARCHAR(40), id INT, address VARCHAR(40), phone VARCHAR(20))", function (err, result) {
         if (err) throw err;
         else console.log("Database Made");
+        con.query(`INSERT INTO CBOdb (staff, position, name, id, password, time) VALUES (TRUE, 'admin', '$admin', '0000', 'admin', NOW())`, function (err, result) {
+            if (err) throw err;
+            else console.log("admin created");
+        });
     });
     res.send();
 });
@@ -81,7 +85,6 @@ app.post('/staffSignIn', (req, res) => {
     });
 
 })
-
 
 app.post('/registerStaff', (req, res) => {
 
@@ -714,7 +717,7 @@ app.post('/updateCustomer', (req, res) => {
     })
 });
  
-app.post('/getAllCustomers', (req, res) => {
+app.get('/getAllCustomers', (req, res) => {
 
     let sqlQuery = `SELECT name, id FROM CBOdb WHERE staff IS FALSE`;
 

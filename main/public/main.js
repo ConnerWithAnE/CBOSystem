@@ -421,9 +421,7 @@ function getAllCustomerList() {
     let http = new XMLHttpRequest();
     let url = '/getAllCustomers';
 
-    let params = '';
-
-    http.open('POST', url, true);
+    http.open('GET', url, true);
 
     http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
 
@@ -452,5 +450,5 @@ function getAllCustomerList() {
             };
         }
     };
-    http.send(params);
+    http.send();
 };
