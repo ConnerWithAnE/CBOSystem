@@ -84,6 +84,7 @@
 
 .card-cData {
     margin: 0;
+    margin-top: 10px;
     background-color: #E2E2E2;
     border: 0.5px #9C9C9C solid;
     border-radius: 7px;

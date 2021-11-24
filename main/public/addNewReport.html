@@ -13,10 +13,31 @@
         <label for="patID">Enter Patient ID</label>
         <input id="customerIDInput" type="text" value="">
         <br>
-        <label for=""></label>
+        <br>
+        <br>
+        <label for="">Current Date and Time</label>
+        <input type="datetime-local" id="consultDate">
+        <br>
+        <label for="birthday">Date of Birth</label>
+        <input type="date" id="dateOfBirth">
+        <br>
+        <br>
+        <br>
+        <label for="staffID">Staff ID</label>
+        <input type="text" id="staffID">
+        <br>
+        <label for="summary">Consult Summary</label>
+        <textarea id="consSummary"></textarea>
+        <br>
+        <label for="otherProbs">Other Medical Concerns (ie. Allergies, relevant illnesses)</label>
+        <br>
+        <textarea id="priorIssues"></textarea>
+        <br>
+        <label for="treat">Treatment</label>
+        <textarea id="treatment"></textarea>
+        <br>
 
-
-        <button id="registerBtn" onclick="removeCustomer()" style="margin-top: 15px;" >Remove</button>
+        <button id="reportCreateBtn" onclick="createCustomerReport()" style="margin-top: 15px;" >Create Report</button>
     </div>
    
 

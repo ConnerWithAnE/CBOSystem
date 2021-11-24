@@ -67,8 +67,7 @@ function registerStaffMember() {
             
             let response = JSON.parse(http.responseText);
 
-            console.log(response.code);
-
+            // Processing Error Codes
             if (response.code == 2) {
                 alert("Passwords do not match\nPlease try again")
             } else if (response.code == 4) {
@@ -116,8 +115,7 @@ function updateStaffMember() {
             
             let response = JSON.parse(http.responseText);
 
-            console.log(response.code);
-
+            // Processing Error Codes
             if (response.code == 2) {
                 alert("Passwords do not match\nPlease try again")
             } else if (response.code == 4) {
@@ -155,12 +153,14 @@ function listStaffData() {
         if (http.readyState == 4 && http.status == 200) {
             let response = JSON.parse(http.responseText);
 
+            // Processing Error Codes
             if (response.code != null) {
                 if (response.code == 2) {
                     alert('ID does not exist or does not belong to Staff');
                 } else {
                     alert("Error encountered, please contact administrator.");
                 }
+                // Putting Staff data into nice visual card format
             } else {
                 let vals = response.val.split('|');
 
@@ -206,8 +206,7 @@ function removeStaffMember() {
             
             let response = JSON.parse(http.responseText);
 
-            console.log(response.code);
-
+            // Processing Error Codes
             if (response.code == 2) {
                 alert("No staff member found with given ID")
             } else if (response.code == 4) {
@@ -260,8 +259,7 @@ function registerCustomer() {
             
             let response = JSON.parse(http.responseText);
 
-            console.log(response.code);
-
+            // Processing Error Codes
             if (response.code == 2) {
                 alert("Passwords do not match\nPlease try again")
             } else if (response.code == 4) {
@@ -308,8 +306,7 @@ function updateCustomer() {
             
             let response = JSON.parse(http.responseText);
 
-            console.log(response.code);
-
+           // Processing Error Codes
             if (response.code == 2) {
                 alert("Passwords do not match\nPlease try again")
             } else if (response.code == 4) {
@@ -347,14 +344,17 @@ function listCustomerData() {
         if (http.readyState == 4 && http.status == 200) {
             let response = JSON.parse(http.responseText);
 
+            // Processing Error Codes
             if (response.code != null) {
                 if (response.code == 2) {
                     alert('ID does not exist or does not belong to Patient');
                 } else {
                     alert("Error encountered, please contact administrator.");
                 }
+            // Putting Information into card format
             } else {
-                let vals = response.val.split('|');
+                console.log(response);
+                let vals = response.val.data.split('|');
 
                 vals.shift();
                 let values = 
@@ -367,6 +367,31 @@ function listCustomerData() {
                     `;
 
                     document.getElementById('customer-data-area').innerHTML = values;
+                
+
+                // Putting Reports into seperate cards and listing them
+                let reports = response.val.reports.split(/\n/);
+
+                reports.shift();
+                if (reports.length > 0) {
+                    let reportListings = reports.slice().map(reports => 
+                        `<div class="card-cData">
+                            <h4>Report Number: ${reports.split('|')[1]}</h4>
+                            <h4>Consult Time and Date: ${reports.split('|')[2].slice(0, 24)}</h4>
+                            <h4>Patient Date of Birth: ${reports.split('|')[4].slice(4, 15)}</h4>
+                            <h4>Staff ID: ${reports.split('|')[3]}</h4>
+                            <h4>Report Summary: </h4><p>${reports.split('|')[5]}<p>
+                            <h4>Other Disclosed Issues: </h4><p>${reports.split('|')[6]}<p>
+                            <h4>Given Treatment: </h4><p>${reports.split('|')[7]}<p>
+                        </div>`
+                        ).join('');
+
+                    document.getElementById('customer-report-area').innerHTML =  reportListings;
+                }
+                
+                
+                
+                
                 };
             };
         }
@@ -397,8 +422,7 @@ function removeCustomer() {
             
             let response = JSON.parse(http.responseText);
 
-            console.log(response.code);
-
+            // Processing Error Codes
             if (response.code == 2) {
                 alert("No patient found with given ID")
             } else if (response.code == 4) {
@@ -416,6 +440,50 @@ function removeCustomer() {
     http.send(params);
 };
 
+function createCustomerReport() {
+
+    let http = new XMLHttpRequest();
+    let url = '/createCustomerReport';
+
+    let customerID = document.getElementById('customerIDInput').value;
+    let currentDateAndTime = document.getElementById('consultDate').value;
+    console.log(currentDateAndTime);
+    let customerBirthday = document.getElementById('dateOfBirth').value;
+    console.log(customerBirthday);
+    let staffID = document.getElementById('staffID').value;
+    let summary = document.getElementById('consSummary').value;
+    let priorIssue = document.getElementById('priorIssues').value;
+    let treatment = document.getElementById('treatment').value;
+
+    let params = `cID=${customerID}&currentDT=${currentDateAndTime}&cBday=${customerBirthday}&staffID=${staffID}&summary=${summary}&issues=${priorIssue}&treatment=${treatment}`;
+
+    http.open('POST', url, true);
+
+    http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+
+    http.onreadystatechange = function() {
+        if (http.readyState == 4 && http.status == 200) {
+            
+            let response = JSON.parse(http.responseText);
+
+            // Processing Error Codes
+            if (response.code == 2) {
+                alert("Cannot leave fields blank\nPlease try again")
+            } else if (response.code == 1) {
+                alert("Error encountered, please contact administrator.");
+            } else if (response.code == 3) {
+                alert("Staff ID does not exist or is not staff")
+            } else {
+                alert("Patient Report Created Successfully!");
+                window.location.href = '/staffPanel.html'
+            };
+        };
+    };
+    http.send(params);
+
+
+};
+
 function getAllCustomerList() {
 
     let http = new XMLHttpRequest();
@@ -429,8 +497,11 @@ function getAllCustomerList() {
         if (http.readyState == 4 && http.status == 200) {
             let response = JSON.parse(http.responseText);
 
+            // Processing Error Codes
             if (response.code != null) {
                 alert("Error encountered, please contact administrator.");
+            
+            // Putting all customers into card format.
             } else {
                 let vals = response.val.split(/\n/);
 
