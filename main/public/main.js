@@ -167,11 +167,9 @@ function listStaffData() {
                 vals.shift();
                 let values = 
                     `<div class="card-cData">
-                        <h4>Staff Name: ${vals[0]}</h4>
-                        <h4>Staff ID: ${vals[1]}</h4>
+                        <h4>Staff Name: ${vals[3]}</h4>
+                        <h4>Staff ID: ${vals[4]}</h4>
                         <h4>Staff Position: ${vals[2]}</h4>
-                        <h4>Staff Address: ${vals[3]}</h4>
-                        <h4>Staff Phone: ${vals[4]}</h4>
                     </div>
                     `;
 
@@ -359,10 +357,10 @@ function listCustomerData() {
                 vals.shift();
                 let values = 
                     `<div class="card-cData">
-                        <h4>Patient Name: ${vals[0]}</h4>
-                        <h4>Patient ID: ${vals[1]}</h4>
-                        <h4>Patient Address: ${vals[2]}</h4>
-                        <h4>Patient Phone: ${vals[3]}</h4>
+                        <h4>Patient Name: ${vals[2]}</h4>
+                        <h4>Patient ID: ${vals[3]}</h4>
+                        <h4>Patient Address: ${vals[5]}</h4>
+                        <h4>Patient Phone: ${vals[6]}</h4>
                     </div>
                     `;
 
@@ -376,25 +374,21 @@ function listCustomerData() {
                 if (reports.length > 0) {
                     let reportListings = reports.slice().map(reports => 
                         `<div class="card-cData">
-                            <h4>Report Number: ${reports.split('|')[1]}</h4>
-                            <h4>Consult Time and Date: ${reports.split('|')[2].slice(0, 24)}</h4>
-                            <h4>Patient Date of Birth: ${reports.split('|')[4].slice(4, 15)}</h4>
-                            <h4>Staff ID: ${reports.split('|')[3]}</h4>
-                            <h4>Report Summary: </h4><p>${reports.split('|')[5]}<p>
-                            <h4>Other Disclosed Issues: </h4><p>${reports.split('|')[6]}<p>
-                            <h4>Given Treatment: </h4><p>${reports.split('|')[7]}<p>
+                            <h4>Report Number: ${reports.split('|')[2]}</h4>
+                            <h4>Consult Time and Date: ${reports.split('|')[3]}</h4>
+                            <h4>Patient Date of Birth: ${reports.split('|')[4]}</h4>
+                            <h4>Staff ID: ${reports.split('|')[5]}</h4>
+                            <h4>Report Summary: </h4><p>${reports.split('|')[6]}<p>
+                            <h4>Other Disclosed Issues: </h4><p>${reports.split('|')[7]}<p>
+                            <h4>Given Treatment: </h4><p>${reports.split('|')[8]}<p>
                         </div>`
                         ).join('');
 
                     document.getElementById('customer-report-area').innerHTML =  reportListings;
-                }
-                
-                
-                
-                
                 };
             };
-        }
+        };
+    };
     http.send(params);
 };
 

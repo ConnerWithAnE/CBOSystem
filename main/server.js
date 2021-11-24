@@ -1,45 +1,46 @@
 'use strict'
 
 const express = require('express');
-const mysql = require('mysql');
+const MongoClient = require('mongodb').MongoClient;
+
+const url = 'mongodb://toor:root@mongodbdatabase:27017'
 
 const app = express();
 const bodyParser = require("body-parser");
 const e = require('express');
 const { resolve } = require('path/posix');
 
+//const client = new MongoClient(url);
+
 app.use(bodyParser.urlencoded({
     extended: true
 }));
 
-var con = mysql.createConnection({
-    host: 'mysqldatabase',
-    user: 'root',
-    database: 'CBOdb',
-    password: 'admin'
-});
+let con
+MongoClient.connect(url, (err, db) => {
+    con = db.db("mongodbdatabase");
+})
 
 const PORT = 8080;
 const HOST = '0.0.0.0';
 
 app.use('/', express.static('public'));
 
-// Create database if it does not already exist.
-
 app.get('/createDatabase', (req, res) => {
 
-    // Creating the main table
-    con.query("CREATE TABLE IF NOT EXISTS CBOdb(staff BOOLEAN, name VARCHAR(60), time DATETIME, password VARCHAR(40), position VARCHAR(40), id VARCHAR(20), address VARCHAR(40), phone VARCHAR(20))", function (err, result) {
-        if (err) throw err;
-        else console.log("Database Made");
-
-        // Adding an account 'admin' for login purposes. UserID: 0000; Password: admin;
-        con.query(`INSERT INTO CBOdb (staff, position, name, id, password, time) VALUES (TRUE, 'admin', 'admin', '0000', 'admin', NOW())`, function (err, result) {
+        // Creating the main collection
+        con.createCollection("CBOdb", function(err, result) {
             if (err) throw err;
-            else console.log("admin created");
+            console.log("Collection Created");
+        })
+        // Adding an account 'admin' for login purposes. UserID: 0000; Password: admin;
+        let adminobj = {staff: true, position: 'admin', name: 'admin', id: '0000', password: 'admin'};
+        con.collection("CBOdb").insertOne(adminobj, function(err, result) {
+            if (err) throw err;
+            console.log(result);
+            console.log("Admin created");
         });
-    });
-    res.send();
+    res.send();  
 });
 
 /*
@@ -59,22 +60,27 @@ app.post('/staffSignIn', (req, res) => {
     let staffID = req.body.staffID;
     let staffPassword = req.body.password;
 
-    let sqlQuery = `SELECT name, password FROM CBOdb WHERE id = '${staffID}'`
+    let mongoQuery = {id: staffID};
+
+    //let sqlQuery = `SELECT name, password FROM CBOdb WHERE id = '${staffID}'`
 
     // Promise to resolve query
+    
     let query = new Promise((resolve, reject) => {
-        con.query(sqlQuery, (err, result) => {
+        con.collection("CBOdb").find(mongoQuery).toArray((err, result) => {
             if (err) {
                 reject(err);
             } else {
                 resolve(result);
             }
-        });
+        })
     });
     query.then((result) => {
+        console.log(result);
         // Looping through each value in the results, checking that the password is correct
         Object.keys(result).forEach(function(key) {
         // If query for ID is successfull, compare passwords
+        console.log(result[key]);
         if (staffPassword == result[key].password) {
             // Return response code 0 and Users name and id for sign-in loggin
             console.log(`User ${staffID} Logged in Successfully`);
@@ -116,13 +122,12 @@ app.post('/registerStaff', (req, res) => {
         res.send(JSON.stringify({code:2})) //"Passwords do not match, staff member not registered");
     } else {
 
-        let sqlQuery = `INSERT INTO CBOdb (staff, position, name, id, password, time) VALUES (TRUE, '${staffPosition}', '${staffName}', '${staffID}', '${staffPassword}', NOW())`;
-        let idQuery = `SELECT * FROM CBOdb WHERE id = '${staffID}'`;
-        let sqlCheck = `SELECT * FROM CBOdb WHERE name = '${staffName}'`;
+        let mongoQuery = {staff: true, position: staffPosition, name: staffName, id: staffID, password: staffPassword};
+        let idQuery = {id: staffID};
 
         // Query to grab ID to see if it is taken
         let idCheck = new Promise((resolve, reject) => {
-            con.query(idQuery, function(err, result) {
+            con.collection("CBOdb").find(idQuery).toArray((err, result) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -142,7 +147,7 @@ app.post('/registerStaff', (req, res) => {
             // If the id is not taken, perform an insert of the new user
             if (idTaken == false) {  
                 let query = new Promise((resolve, reject) => {
-                    con.query(sqlQuery, function(err, result) {
+                    con.collection("CBOdb").insertOne(mongoQuery, (err, result) => {
                         if (err) {
                             reject(err);
                         } else {
@@ -150,11 +155,10 @@ app.post('/registerStaff', (req, res) => {
                         }
                     });
                 });
-
                 query.then((result) => {
                     // Verify that the user has been added to the table
                     let verifyQuery = new Promise((resolve, reject) => {
-                        con.query(sqlCheck, function(err, result) {
+                        con.collection("CBOdb").find(idQuery).toArray((err, result) => {
                             if (err) {
                                 reject(err);
                             } else {
@@ -196,17 +200,16 @@ app.post('/removeStaff', (req, res) => {
     */
 
     let staffToDel = req.body.staffID;
-    let sqlQuery;
-    let sqlCheck;
+    let mongoQuery;
+
 
     let idExists = true;
 
-    sqlCheck = `SELECT * FROM CBOdb WHERE id = '${staffToDel}'`
-    sqlQuery = `DELETE FROM CBOdb WHERE id = '${staffToDel}'`;    
+    mongoQuery = {id:staffToDel};
    
     // Query to check if the staff member exists in the database
     let ifExistsQuery = new Promise((resolve, reject) => {
-        con.query(sqlCheck, function(err, result) {
+        con.collection("CBOdb").find(mongoQuery).toArray((err, result) => {
             if (err) {
                 reject(err);
             } else {
@@ -234,7 +237,7 @@ app.post('/removeStaff', (req, res) => {
     // Query to delete staff member from the database if the id exists
     if (idExists == true) {
         let query = new Promise((resolve, reject) => {
-            con.query(sqlCheck, function(err, result) {
+            con.collection("CBOdb").deleteOne(mongoQuery, (err, result) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -245,7 +248,7 @@ app.post('/removeStaff', (req, res) => {
         query.then((result) => {
             // Verfiy the deleteion was successful 
             let verifyQuery = new Promise((resolve, reject) => {
-                con.query(sqlQuery, function(err, result) {
+                con.collection("CBOdb").find(mongoQuery).toArray((err, result) => {
                     if (err) {
                         reject(err);
                     } else {
@@ -287,7 +290,9 @@ app.post('/updateStaff', (req, res) => {
     let staffPasswordV = req.body.passwordV;
 
     // Initializing the query
-    let sqlQuery =  `UPDATE CBOdb SET ` ;
+
+    let mongoQuery = `{`;
+    
     let idExists = true;
 
     // Ensuring passwords match if they are to be updated
@@ -312,9 +317,9 @@ app.post('/updateStaff', (req, res) => {
     // Saving the updated values to the query 
     toUpdate.forEach(element => {
         if (toUpdate.indexOf(element) == toUpdate.length-1){
-            sqlQuery += `${element.title} = '${element.val}' WHERE id = '${staffID.val}'`;
+            mongoQuery += `"${element.title}":"${element.val}"}`
         } else {
-            sqlQuery += `${element.title} = '${element.val}', `
+            mongoQuery += `"${element.title}":"${element.val}", `
         }
     })
     // Ensuring the query is not going to be empty
@@ -322,11 +327,12 @@ app.post('/updateStaff', (req, res) => {
         res.send(JSON.stringify({code:5})) // Must enter values to update
         return
     }
-    let idQuery = `SELECT * FROM CBOdb WHERE id = '${staffID.val}'`;
+    mongoQuery = { $set: JSON.parse(mongoQuery)};
+    let idQuery = {id:staffID.val};
 
     // Checking the ID belongs to staff
     let idCheck = new Promise((resolve, reject) => {
-        con.query(idQuery, function(err, result) {
+        con.collection("CBOdb").find(idQuery).toArray((err, result) => {
             if (err) {
                 reject(err);
             } else {
@@ -349,7 +355,7 @@ app.post('/updateStaff', (req, res) => {
         if (idExists == true) {  
             // If the ID is staff, update the database
             let query = new Promise((resolve, reject) => {
-                con.query(sqlQuery, function(err, result) {
+                con.collection("CBOdb").updateOne(idQuery, mongoQuery, (err, result) => {
                     if (err) {
                         reject(err);
                     } else {
@@ -387,14 +393,11 @@ app.post('/getStaffData', (req, res) => {
     
         let responseText;
            
-        
-        let sqlQuery = `SELECT name, id, position, address, phone FROM CBOdb WHERE id = '${staffID}'`;
-    
-        let idQuery = `SELECT * FROM CBOdb WHERE id = '${staffID}'`;
+        let mongoQuery = {id:staffID};
         
         // Check to make sure the ID is a staff ID
         let idCheck = new Promise((resolve, reject) => {
-            con.query(idQuery, function(err, result) {
+            con.collection("CBOdb").find(mongoQuery).toArray((err, result) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -421,7 +424,7 @@ app.post('/getStaffData', (req, res) => {
             if (idExists == true) {
                 // call query to get data
                 let query = new Promise((resolve, reject) => {
-                    con.query(sqlQuery, function(err, result) {
+                    con.collection("CBOdb").find(mongoQuery).toArray((err, result) => {
                         if (err) {
                             reject(err);
                         } else {
@@ -478,8 +481,8 @@ app.post('/registerCustomer', (req, res) => {
     let customerAddress = req.body.address;
     let customerPhone = req.body.phone;
 
-    let sqlQuery;
-    let customerReportTable;
+    let mongoQuery;
+
     let idTaken = false;
 
     // Checking if new password entered 
@@ -487,21 +490,21 @@ app.post('/registerCustomer', (req, res) => {
         res.send(JSON.stringify({code:2})) //"Passwords do not match, customer not registered");
     } else {
         if (customerAddress == '' && customerPhone == '') {
-            sqlQuery = `INSERT INTO CBOdb (staff, name, id, password, time) VALUES (FALSE, '${customerName}', '${customerID}', '${customerPassword}', NOW())`;
+            mongoQuery = {staff: false, name: customerName, id: customerID, password: customerPassword, address: "Empty", phone: "Empty"};
         } else if (customerAddress == '') {
-            sqlQuery = `INSERT INTO CBOdb (staff, name, id, password, phone, time) VALUES (FALSE, '${customerName}', '${customerID}', '${customerPassword}', '${customerPhone}', NOW())`;
+            mongoQuery = {staff: false, name: customerName, id: customerID, password: customerPassword, address: "Empty", phone: customerPhone};
         } else if (customerPhone == '') {
-            sqlQuery = `INSERT INTO CBOdb (staff, name, id, password, address, time) VALUES (FALSE, '${customerName}', '${customerID}', '${customerPassword}', '${customerAddress}', NOW())`;
+            mongoQuery = {staff:false, name: customerName, id: customerID, password: customerPassword, address: customerAddress, phone: "Empty"};
         } else {
-            sqlQuery = `INSERT INTO CBOdb (staff, name, id, password, address, phone, time) VALUES (FALSE, '${customerName}', '${customerID}', '${customerPassword}', '${customerAddress}','${customerPhone}', NOW())`;
+            mongoQuery = {staff:false, name: customerName, id: customerID, password: customerPassword, address: customerAddress, phone: customerPhone};
         }
         
-        let idQuery = `SELECT * FROM CBOdb WHERE id = '${customerID}'`;
-        let sqlCheck = `SELECT * FROM CBOdb WHERE name = '${customerName}'`;
-
+        
+        let idQuery = {id: customerID};
+       
         // Query to grab ID to see if it is taken
         let idCheck = new Promise((resolve, reject) => {
-            con.query(idQuery, function(err, result) {
+            con.collection("CBOdb").find(idQuery).toArray((err, result) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -521,7 +524,7 @@ app.post('/registerCustomer', (req, res) => {
             // If the id is not taken, perform an insert of the new user
             if (idTaken == false) {  
                 let query = new Promise((resolve, reject) => {
-                    con.query(sqlQuery, function(err, result) {
+                    con.collection("CBOdb").insertOne(mongoQuery, (err, result) => {
                         if (err) {
                             reject(err);
                         } else {
@@ -532,14 +535,15 @@ app.post('/registerCustomer', (req, res) => {
 
                 query.then((result) => {
                     // Create table with ID of customer to store personal reports
-                    con.query(`CREATE TABLE IF NOT EXISTS t${customerID} (entrynum VARCHAR(20), time DATETIME, staffid VARCHAR(20), dateofbirth DATE, summary TEXT, problems TEXT, treatment TEXT)`, function (err, result) {
+                    
+                    con.createCollection(`t${customerID}`, (err, result) => {
                         if (err) throw err;
                         else console.log("Customer Table Created");
                     })
-                    
+
                     // Verify that the user has been added to the table
                     let verifyQuery = new Promise((resolve, reject) => {
-                        con.query(sqlCheck, function(err, result) {
+                        con.collection("CBOdb").find(mongoQuery).toArray((err, result) => {
                             if (err) {
                                 reject(err);
                             } else {
@@ -579,19 +583,18 @@ app.post('/removeCustomer', (req, res) => {
     */
 
     let customerToDel = req.body.cID;
-    let sqlQuery;
-    let sqlCheck;
+    let mongoQuery;
 
     let idExists = true;
 
-    sqlCheck = `SELECT * FROM CBOdb WHERE id = '${customerToDel}'`
-    sqlQuery = `DELETE FROM CBOdb WHERE id = '${customerToDel}'`;
-    sqlDelTable = `DROP TABLE t${customerToDel}`
+
+    mongoQuery = {id:customerToDel};
+    
 
 
-    // Querty 
+    // Query to see if the customer exists 
     let ifExistsQuery = new Promise((resolve, reject) => {
-        con.query(sqlCheck, function(err, result) {
+        con.collection("CBOdb").find(mongoQuery).toArray((err, result) => {
             if (err) {
                 reject(err);
             } else {
@@ -618,7 +621,7 @@ app.post('/removeCustomer', (req, res) => {
     // Query to delete staff member from the database
     if (idExists == true) {
         let query = new Promise((resolve, reject) => {
-            con.query(sqlQuery, function(err, result) {
+            con.collection("CBOdb").deleteOne(mongoQuery, (err, result) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -628,10 +631,16 @@ app.post('/removeCustomer', (req, res) => {
         });
         query.then((result) => {
             // Remove custome table
-            con.query(delTable, function(err, result){})
+            con.collection(`t${customerToDel}`).drop((err, result) => {
+                if (err) {
+                    throw err;
+                } else {
+                    console.log(`Collection with ID: ${customerToDel} Deleted`);
+                }
+            })
             // Verify deletion of customer
             let verifyQuery = new Promise((resolve, reject) => {
-                con.query(sqlCheck, function(err, result) {
+                con.collection("CBOdb").find(mongoQuery).toArray((err, result) => {
                     if (err) {
                         reject(err);
                     } else {
@@ -675,7 +684,8 @@ app.post('/updateCustomer', (req, res) => {
 
 
 
-    let sqlQuery =  `UPDATE CBOdb SET ` ;
+    let mongoQuery = `{`;
+
     let idExists = true;
 
    // Ensuring passwords match if they are to be updated
@@ -700,9 +710,9 @@ app.post('/updateCustomer', (req, res) => {
     // Saving the updated values to the query 
     toUpdate.forEach(element => {
         if (toUpdate.indexOf(element) == toUpdate.length-1){
-            sqlQuery += `${element.title} = '${element.val}' WHERE id = '${customerID.val}'`;
+            mongoQuery += `"${element.title}":"${element.val}"}`
         } else {
-            sqlQuery += `${element.title} = '${element.val}', `
+            mongoQuery += `"${element.title}":"${element.val}", `
         }
     })
     // Ensuring the query is not going to be empty
@@ -710,11 +720,12 @@ app.post('/updateCustomer', (req, res) => {
         res.send(JSON.stringify({code:5})) // Must enter values to update
         return
     }
-    let idQuery = `SELECT * FROM CBOdb WHERE id = '${customerID.val}'`;
+    mongoQuery = { $set: JSON.parse(mongoQuery)};
+    let idQuery = {id:staffID.val};
 
     // Checking the ID belongs to a customer
     let idCheck = new Promise((resolve, reject) => {
-        con.query(idQuery, function(err, result) {
+        con.collection("CBOdb").find(idQuery).toArray((err, result) => {
             if (err) {
                 reject(err);
             } else {
@@ -737,7 +748,7 @@ app.post('/updateCustomer', (req, res) => {
         if (idExists == true) {  
             // If the ID is a customer, update the database
             let query = new Promise((resolve, reject) => {
-                con.query(sqlQuery, function(err, result) {
+                con.collection("CBOdb").updateOne(idQuery, mongoQuery, (err, result) => {
                     if (err) {
                         reject(err);
                     } else {
@@ -778,11 +789,10 @@ app.post('/createCustomerReport', (req, res) => {
     let treatment = req.body.treatment;
 
     let check = [customerID, currentDateTime, customerBirthday, staffID, summary, priorIssues, treatment];
-    let sqlCheck = `SELECT * FROM CBOdb WHERE id = '${staffID}'`
 
-    let getrows = `SELECT COUNT(*) FROM t${customerID}`;
+    let mongoQuery;
+    let mongoCheck = {id:staffID};
 
-    let sqlQuery;
 
     // Ensure no elements are empty
     check.forEach(element => {
@@ -795,7 +805,7 @@ app.post('/createCustomerReport', (req, res) => {
 
     // Ensure the given staff member exists
     let ifExistsQuery = new Promise((resolve, reject) => {
-        con.query(sqlCheck, function(err, result) {
+        con.collection("CBOdb").find(mongoCheck).toArray((err, result) => {
             if (err) {
                 reject(err);
             } else {
@@ -823,25 +833,23 @@ app.post('/createCustomerReport', (req, res) => {
         if (isStaff == true) {
             // If it is a staff ID, query the customer report database to get length
             let rowQuery = new Promise((resolve, reject) => {
-                con.query(getrows, function(err, result) {
+                con.collection(`t${customerID}`).count((err, result) => {
                     if (err) {
                         reject(err);
                     } else {
+                        console.log(result);
                         resolve(result);
                     }
                 });
             })
             rowQuery.then((result) => {
                 // Save length and update the query
-                Object.keys(result).forEach(function(key) {
-                    consNum = result[key][Object.keys(result[key])[0]];
-                    consNum+=1
-                    consNum = consNum.toString();
-                    sqlQuery = `INSERT INTO t${customerID} (entrynum, time, dateofbirth, staffid, summary, problems, treatment) VALUES ('${consNum}', '${currentDateTime}', '${customerBirthday}', '${staffID}', '${summary}', '${priorIssues}', '${treatment}')`
-                })
+                consNum = result + 1;
+                consNum = consNum.toString();
+                mongoQuery = {entrynum: consNum, time: currentDateTime, dateofbirth: customerBirthday, staffid: staffID, summary: summary, problems: priorIssues, treatment: treatment};
                 // Add the data to a new consultation report
                 let reportQuery = new Promise((resolve, reject) => {
-                    con.query(sqlQuery, function(err, result) {
+                    con.collection(`t${customerID}`).insertOne(mongoQuery, (err, result) => {
                         if (err) {
                             reject(err);
                         } else {
@@ -876,13 +884,13 @@ app.post('/createCustomerReport', (req, res) => {
 app.get('/getAllCustomers', (req, res) => {
 
     // Select all customers from the database
-    let sqlQuery = `SELECT name, id FROM CBOdb WHERE staff IS FALSE`;
+    let mongoQuery = {staff:false};
 
     let responseText;
 
     // Query to get all customers in the database
     let query = new Promise((resolve, reject) => {
-        con.query(sqlQuery, function(err, result) {
+        con.collection("CBOdb").find(mongoQuery).toArray((err, result) => {
             if (err) {
                 reject(err);
             } else {
@@ -920,15 +928,13 @@ app.post('/getCustomerData', (req, res) => {
 
     let responseText = {data:null, reports:null};
        
-    
-    let sqlDataQuery = `SELECT name, id, address, phone FROM CBOdb WHERE id = '${customerID}'`;
-    let sqlReportQuery = `SELECT * FROM t${customerID}`;
+    let mongoDataQuery = {id:customerID};
 
-    let idQuery = `SELECT * FROM CBOdb WHERE id = '${customerID}'`;
+    let idQuery = {id:customerID};
     
     // Ensure id is in use and not a staff ID
     let idCheck = new Promise((resolve, reject) => {
-        con.query(idQuery, function(err, result) {
+        con.collection("CBOdb").find(idQuery).toArray((err, result) => {
             if (err) {
                 reject(err);
             } else {
@@ -953,7 +959,7 @@ app.post('/getCustomerData', (req, res) => {
         if (idExists == true) {
             // if the ID exists and is customer 
             let query = new Promise((resolve, reject) => {
-                con.query(sqlDataQuery, function(err, result) {
+                con.collection("CBOdb").find(mongoDataQuery).toArray((err, result) => {
                     if (err) {
                         reject(err);
                     } else {
@@ -971,7 +977,7 @@ app.post('/getCustomerData', (req, res) => {
                         }
                 })
                 let reportQuery = new Promise((resolve, reject) => {
-                    con.query(sqlReportQuery, function(err, result) {
+                    con.collection(`t${customerID}`).find().toArray((err, result) => {
                         if (err) {
                             reject(err);
                         } else {
@@ -981,7 +987,7 @@ app.post('/getCustomerData', (req, res) => {
                 });
                 // Getting all the data from each report for the customer and formatting it for the front end
                 reportQuery.then((result) => {
-                    
+                    console.log(result);
                     Object.keys(result).forEach(function(key) {
                         let reportRes;
                         

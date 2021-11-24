@@ -4,16 +4,17 @@ services:
   mainserver:
     build: ./main
     depends_on:
-      - mysqldatabase
+      - mongodbdatabase
     container_name: mainServer
     ports:
       - "81:8080"
 
-  mysqldatabase:
-    image: mysql:5.7.31
-    container_name: projDataBase
+
+  mongodbdatabase:
+    image: mongo
+    container_name: monDataBase
     ports:
-      - "3306:3306"
+      - 27017:27017
     environment:
-      MYSQL_ROOT_PASSWORD: admin
-      MYSQL_DATABASE: CBOdb
+      MONGO_INITDB_ROOT_USERNAME: toor
+      MONGO_INITDB_ROOT_PASSWORD: root
